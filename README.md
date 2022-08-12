@@ -1,2 +1,2 @@
 # The-builder-of-things
-codewars cata solution
+from https://www.codewars.com/kata/5571d9fc11526780a000011a
