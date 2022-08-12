@@ -1,0 +1,175 @@
+class Relations():
+    def __init__(self, name):
+        self.name = name
+        self.values = []
+
+    def __getattr__(self, attr_name):
+        # print(f'{self} append value "{attr_name}"')
+        self.values.append(attr_name)
+
+    def get_values(self):
+        if len(self.values) == 1:
+            return self.values[0]
+        else:
+            return self.values
+
+    def __repr__(self):
+        return self.name
+        
+        
+class Family():
+    def __init__(self, name):
+        self.name = name
+        self.relatives = []
+
+    def __getattr__(self, attr_name):
+        # print(f'{self} set attribute "{attr_name}"')
+        setattr(self, attr_name, Relations(attr_name))
+        self.relatives.append(attr_name)
+        return getattr(self, attr_name)
+
+    def __repr__(self):
+        return self.name
+    
+class Can():
+    def __init__(self, obj, spoke='spoke'):
+        self.obj = obj
+        print(self.obj.phrases)
+        setattr(self.obj, spoke, self.obj.phrases)
+        print(f'phrases: {self.obj.phrases}')
+
+    def __getattr__(self, ability):
+        print(f'setting "{ability}" ability for {self.obj.name}')
+        setattr(self.obj, ability, self.obj.func_place)
+        return getattr(self.obj, ability)   
+    
+class Thing():
+        
+    
+    def __init__(self, name):
+        
+        self.name = name 
+        self.is_a = Relations('identity')
+        self.is_not_a = Relations('negation')
+        self.is_the = Family('parenthood')
+        self.phrases = []
+        self.can = Can(obj = self)
+        setattr(self, 'is_' + name, True)
+        setattr(self, 'name', self.name)
+        self.ability = None
+        
+
+
+    def func_place(self, f, spoke=None):         # f may be function or phrase
+        if self.ability:
+            self.phrases.append(self.ability(f))
+            return self.ability(f)
+
+        print(f'func_place for {f}')
+        self.ability = f
+        return self.ability
+    
+    
+    def __getattr__(self, attr_name):
+        if attr_name[:5] == 'is_a_':
+
+            if attr_name[5:] in self.is_a.values:
+                return True
+            else:
+                return False
+
+        if attr_name in self.is_the.relatives:
+            return getattr(self.is_the, attr_name).get_values()
+
+
+    def has(self, n):
+        t = (self,)                  # only single parent, like jane.legs[0]
+        return Parts_creator(n, t)  # delegation  to Translator's method      
+            
+    def having(self, n):
+        t = (self,)
+        return Parts_creator(n, t)
+
+    def __repr__(self):
+        return(f'{self.name}')
+
+
+
+class Translator():
+    
+    def __init__(self, t, attr_to_fill=None):
+        self.t = t                  # can be many parents, like jane.legs
+        self.each = self
+        self.being_the = Property_setter(things_tuple = self.t)
+        self.attr_to_fill = attr_to_fill
+        self.and_the = Property_setter(things_tuple = self.t)
+
+    def has(self, n):
+        return Parts_creator(n, self.t)   # (n, parent_tuple)   
+
+    def having(self, n):
+        return Parts_creator(n, self.t)   # (n, parent_tuple)
+
+    def __getattr__(self, attr_value):    # 
+        if self.attr_to_fill:
+            print(f'                        attr_to_fill: {self.attr_to_fill}')
+            for thing in self.t:
+                setattr(thing, self.attr_to_fill, attr_value)
+        return self
+
+    def __repr__(self):
+        return f'<Translator {self.t}>'
+
+
+class Property_setter():
+
+    def __init__(self, things_tuple):
+        self.things_tuple = things_tuple
+
+    def __getattr__(self, attr_name):
+        for thing in self.things_tuple:
+            setattr(thing, attr_name, None)
+        return Translator(self.things_tuple, attr_to_fill=attr_name)
+
+    def __repr__(self):
+        return f'Property_setter ({self.things_tuple})'
+
+
+class Parts_creator():
+
+    def __init__(self, n, parent_tuple):
+        self.n = n
+        self.parent_tuple = parent_tuple
+
+    def __getattr__(self, attr_name):           # has(2).legs
+        t = ()                          # for Translator
+        for parent in self.parent_tuple:
+            
+            if self.n != 1:
+                part_name = attr_name[:-1]
+                new_part = tuple(Thing(part_name) for i in range(self.n))
+            else:
+                part_name = attr_name
+                new_part = Thing(part_name)
+
+            # print(f'parent: {parent}        attr_name: {attr_name}      new_part: {new_part}')
+            setattr(parent, attr_name, new_part)           
+
+            print(f'                    now {parent} has {self.n} {attr_name}')
+    
+            if self.n != 1:
+                t += getattr(parent, attr_name)   
+            else:
+                t += (getattr(parent, attr_name),)
+
+            # print(f'                    t: {t}')
+        print()
+
+        return Translator(t)
+
+    def __repr__(self):
+        return f'<Parts_creator {self.parent_tuple}>'
+
+# import builtins
+# name = builtins.getattr(jane, 'name')
+name = 'Jane'
